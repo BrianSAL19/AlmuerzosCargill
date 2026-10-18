@@ -29,11 +29,6 @@ if not os.path.exists(ARCV_PEDIDOS):
 
 st.title("🍱 Registro de Pedidos de Almuerzo")
 
-# --- MOSTRAR MENSAJE DE ÉXITO TRAS RECARGAR LA PÁGINA ---
-if "mensaje_exito" in st.session_state:
-    st.success(st.session_state["mensaje_exito"])
-    del st.session_state["mensaje_exito"]
-
 # --- SECCIÓN 1: FORMULARIO DE REGISTRO ---
 st.header(TEXTO_CALDO)
 
@@ -60,6 +55,11 @@ if st.button("Guardar Pedido"):
         st.rerun()
     else:
         st.warning("Por favor, escribe tu nombre antes de enviar.")
+
+# --- MOSTRAR MENSAJE DE ÉXITO JUSTO DEBAJO DEL BOTÓN "GUARDAR PEDIDO" ---
+if "mensaje_exito" in st.session_state:
+    st.success(st.session_state["mensaje_exito"])
+    del st.session_state["mensaje_exito"]
 
 st.divider()
 
