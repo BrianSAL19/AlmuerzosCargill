@@ -6,13 +6,13 @@ import textwrap
 from io import BytesIO
 
 # ====================================================================
-# 📝 MENÚ DEL DÍA - EDITA AQUÍ ESTOS DATOS CADA DÍA SEGÚN EL RESTAURANTE 📝
+# 📝 MENÚ DEL DÍA - EDITA AQUí ESTOS DATOS CADA DÍA SEGÚN EL RESTAURANTE 📝
 # ====================================================================
-TEXTO_CALDO = "Caldo: Menestron de carne"
+TEXTO_CALDO = "Caldo: AGUADO DE POLLO"
 
 OPCIONES_SEGUNDO = [
-    "Pollo al horno con ensalada de remolacha",
-    "Arroz con camaron"
+    "SUDADO DE CAMARON",
+    "POLLO FRITO Y MENESTRA DE FREJOL"
 ]
 # ====================================================================
 
@@ -27,11 +27,16 @@ if not os.path.exists(ARCV_PEDIDOS):
 st.title("🍱 Registro de Pedidos de Almuerzo")
 
 # --- SECCIÓN 1: FORMULARIO DE REGISTRO ---
+# Aquí se muestra automáticamente el caldo configurado arriba
 st.header(TEXTO_CALDO)
 
 nombre = st.text_input("Tu nombre:")
 completo_segundo = st.radio("¿Completo o solo segundo?:", ["Completo", "Solo segundo"])
+
+# Aquí se cargan automáticamente las opciones de segundo configuradas arriba
 seleccion_segundo = st.radio("Selecciona el segundo:", OPCIONES_SEGUNDO)
+
+# El arroz se mantiene fijo como pediste
 tipo_arroz = st.radio("Selecciona el arroz:", ["Blanco", "Moro"])
 notas = st.text_area("Observaciones (opcional):", placeholder="Ej: MADURO EXTRA")
 
@@ -109,33 +114,88 @@ if os.path.exists(ARCV_PEDIDOS):
 
         st.divider()
 
-        # --- GENERACIÓN DE IMAGEN CON LETRA GRANDE Y FORMATO MULTILÍNEA CORREGIDO ---
+        # --- GENERACIÓN DE IMAGEN PERFECTA PARA WHATSAPP ---
         st.subheader("🖼️ Generar imagen para compartir por WhatsApp")
 
         def generar_imagen_perfecta(df, completo, solo_seg):
             df_fmt = df.copy()
-            
-            # Renombramos el encabezado para que salga en dos líneas
-            df_fmt = df_fmt.rename(columns={"Tipo de Almuerzo": "Tipo de\nAlmuerzo"})
-
-            # Saltos de línea ajustados para no cortar palabras cortas como "Completo"
-            df_fmt['Segundo'] = df_fmt['Segundo'].apply(lambda x: textwrap.fill(str(x), width=14))
-            df_fmt['Observaciones'] = df_fmt['Observaciones'].apply(lambda x: textwrap.fill(str(x), width=10))
-            df_fmt['Nombre'] = df_fmt['Nombre'].apply(lambda x: textwrap.fill(str(x), width=12))
-            df_fmt['Tipo de\nAlmuerzo'] = df_fmt['Tipo de\nAlmuerzo'].apply(lambda x: textwrap.fill(str(x), width=10))
+            df_fmt['Segundo'] = df_fmt['Segundo'].apply(lambda x: textwrap.fill(str(x), width=22))
+            df_fmt['Observaciones'] = df_fmt['Observaciones'].apply(lambda x: textwrap.fill(str(x), width=18))
+            df_fmt['Nombre'] = df_fmt['Nombre'].apply(lambda x: textwrap.fill(str(x), width=15))
 
             num_filas = len(df_fmt)
-            alto_figura = max(5.0, num_filas * 0.95 + 3.0)
+            alto_figura = max(4.5, num_filas * 0.75 + 2.5)
             
             fig, ax = plt.subplots(figsize=(11, alto_figura), dpi=250)
             ax.axis('off')
             
-            plt.title("REPORTE DE PEDIDOS DE ALMUERZO", fontsize=18, fontweight='bold', pad=20, color='#0F172A')
+            plt.title("REPORTE DE PEDIDOS DE ALMUERZO", fontsize=15, fontweight='bold', pad=15, color='#0F172A')
             
-            col_widths = [0.06, 0.13, 0.13, 0.20, 0.09, 0.16]
+            col_widths = [0.06, 0.20, 0.18, 0.28, 0.12, 0.16]
 
             tabla = ax.table(
                 cellText=df_fmt.values,
                 colLabels=df_fmt.columns,
                 colWidths=col_widths,
                 cellLoc='center',
+                loc='top',
+                bbox=[0, 0.22, 1, 0.70]
+            )
+            
+            tabla.auto_set_font_size(False)
+            tabla.set_fontsize(9)
+            
+            for (r, c), cell in tabla.get_celld().items():
+                if r == 0:
+                    cell.set_facecolor('#1D4ED8')
+                    cell.set_text_props(color='white', weight='bold', fontsize=9.5)
+                    cell.set_height(0.08)
+                else:
+                    color_fondo = '#F8FAFC' if r % 2 == 0 else '#FFFFFF'
+                    cell.set_facecolor(color_fondo)
+                    cell.set_text_props(color='#1E293B')
+                
+                cell.set_edgecolor('#CBD5E1')
+                cell.set_linewidth(0.8)
+
+            texto_resumen = (
+                f"RESUMEN DE TOTALES:\n"
+                f"• Almuerzos Completos: {completo}   |   • Solo Segundo: {solo_seg}   |   • Total Pedidos: {len(df_fmt)}"
+            )
+            
+            plt.text(
+                0.5, 0.06, texto_resumen, 
+                ha='center', va='center', fontsize=10, fontweight='bold',
+                color='#0F172A',
+                bbox=dict(boxstyle='round,pad=0.7', facecolor='#E2E8F0', edgecolor='#94A3B8', linewidth=1)
+            )
+            
+            plt.tight_layout()
+            
+            buffer = BytesIO()
+            plt.savefig(buffer, format='jpeg', bbox_inches='tight', facecolor='white')
+            buffer.seek(0)
+            plt.close(fig)
+            return buffer
+
+        buf_imagen = generar_imagen_perfecta(df_mostrar, cant_completo, cant_solo_segundo)
+
+        st.image(buf_imagen, caption="Vista previa de la imagen a enviar", use_container_width=True)
+
+        st.download_button(
+            label="📲 Descargar Imagen JPG (Para WhatsApp)",
+            data=buf_imagen,
+            file_name="pedidos_del_dia.jpg",
+            mime="image/jpeg",
+        )
+
+    else:
+        st.info("Aún no hay pedidos registrados hoy.")
+
+# --- BOTÓN PARA REINICIAR LA TABLA (Nuevo día / Nuevo menú) ---
+st.divider()
+if st.button("⚠️ Resetear base de datos (Borrar pedidos anteriores)"):
+    if os.path.exists(ARCV_PEDIDOS):
+        os.remove(ARCV_PEDIDOS)
+        st.success("¡Base de datos reiniciada para un nuevo día!")
+        st.rerun()
