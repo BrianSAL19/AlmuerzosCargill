@@ -1,28 +1,46 @@
 import streamlit as st
 import pandas as pd
 import os
+import json
 import matplotlib.pyplot as plt
 import textwrap
 from io import BytesIO
 
 # ====================================================================
-# 📝 MENÚ DEL DÍA - EDITA AQUÍ ESTOS DATOS CADA DÍA SEGÚN EL RESTAURANTE 📝
+# 🔑 CONFIGURACIÓN Y ARCHIVOS DE DATOS
 # ====================================================================
-TEXTO_CALDO = "Caldo: Menestron de carne"
-
-OPCIONES_SEGUNDO = [
-    "Pollo al horno con ensalada de remolacha",
-    "Arroz con camaron"
-]
-
-# 🔑 CAMBIA ESTA CONTRASEÑA PARA TU ACCESO ADMINISTRADOR
 CLAVE_ADMIN = "admin123"
-# ====================================================================
-
 ARCV_PEDIDOS = "pedidos_almuerzo.csv"
+ARCV_MENU = "menu_dia.json"
 COLUMNAS = ["Nombre", "Tipo de Almuerzo", "Segundo", "Arroz", "Observaciones"]
 
-# Si el archivo no existe, lo creamos
+# Cargar o inicializar el menú del día
+MENU_DEFAULT = {
+    "caldo": "Caldo: Menestron de carne",
+    "segundos": [
+        "Pollo al horno con ensalada de remolacha",
+        "Arroz con camaron"
+    ]
+}
+
+def cargar_menu():
+    if os.path.exists(ARCV_MENU):
+        try:
+            with open(ARCV_MENU, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return MENU_DEFAULT
+    return MENU_DEFAULT
+
+def guardar_menu(data):
+    with open(ARCV_MENU, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+menu_actual = cargar_menu()
+TEXTO_CALDO = menu_actual.get("caldo", MENU_DEFAULT["caldo"])
+OPCIONES_SEGUNDO = menu_actual.get("segundos", MENU_DEFAULT["segundos"])
+
+# Si el archivo de pedidos no existe, lo creamos
 if not os.path.exists(ARCV_PEDIDOS):
     df_inicial = pd.DataFrame(columns=COLUMNAS)
     df_inicial.to_csv(ARCV_PEDIDOS, index=False, sep=";")
@@ -117,10 +135,8 @@ if os.path.exists(ARCV_PEDIDOS):
         def generar_imagen_perfecta(df, completo, solo_seg):
             df_fmt = df.copy()
             
-            # Renombramos el encabezado para que salga en dos líneas
             df_fmt = df_fmt.rename(columns={"Tipo de Almuerzo": "Tipo de\nAlmuerzo"})
 
-            # Saltos de línea ajustados para no cortar palabras cortas como "Completo"
             df_fmt['Segundo'] = df_fmt['Segundo'].apply(lambda x: textwrap.fill(str(x), width=14))
             df_fmt['Observaciones'] = df_fmt['Observaciones'].apply(lambda x: textwrap.fill(str(x), width=10))
             df_fmt['Nombre'] = df_fmt['Nombre'].apply(lambda x: textwrap.fill(str(x), width=12))
@@ -204,6 +220,32 @@ with st.sidebar:
     if password_ingresada == CLAVE_ADMIN:
         st.success("Acceso concedido")
         
+        # --- CAMBIAR MENÚ DEL DÍA ---
+        st.markdown("---")
+        st.subheader("🍱 Actualizar Menú del Día")
+        
+        nuevo_caldo_input = st.text_input("Nombre del Caldo:", value=TEXTO_CALDO.replace("Caldo: ", ""))
+        
+        segundos_texto_def = "\n".join(OPCIONES_SEGUNDO)
+        nuevos_segundos_input = st.text_area(
+            "Opciones de Segundo (un plato por línea):",
+            value=segundos_texto_def,
+            height=120
+        )
+
+        if st.button("💾 Guardar Menú del Día"):
+            lista_segundos = [s.strip() for s in nuevos_segundos_input.split("\n") if s.strip()]
+            if lista_segundos and nuevo_caldo_input.strip():
+                nuevo_menu = {
+                    "caldo": f"Caldo: {nuevo_caldo_input.strip()}",
+                    "segundos": lista_segundos
+                }
+                guardar_menu(nuevo_menu)
+                st.session_state["msg_admin"] = "¡Menú del día actualizado con éxito!"
+                st.rerun()
+            else:
+                st.error("Por favor completa el caldo y al menos una opción de segundo.")
+
         if os.path.exists(ARCV_PEDIDOS):
             df_pedidos_admin = pd.read_csv(ARCV_PEDIDOS, sep=";")
             
