@@ -29,6 +29,11 @@ if not os.path.exists(ARCV_PEDIDOS):
 
 st.title("🍱 Registro de Pedidos de Almuerzo")
 
+# --- MOSTRAR MENSAJE DE ÉXITO TRAS RECARGAR LA PÁGINA ---
+if "mensaje_exito" in st.session_state:
+    st.success(st.session_state["mensaje_exito"])
+    del st.session_state["mensaje_exito"]
+
 # --- SECCIÓN 1: FORMULARIO DE REGISTRO ---
 st.header(TEXTO_CALDO)
 
@@ -51,7 +56,7 @@ if st.button("Guardar Pedido"):
         }])
         
         nuevo_pedido.to_csv(ARCV_PEDIDOS, mode='a', header=False, index=False, sep=";")
-        st.success(f"¡Pedido registrado con éxito para {nombre}!")
+        st.session_state["mensaje_exito"] = f"✅ Pedido registrado con éxito para {nombre.strip()}"
         st.rerun()
     else:
         st.warning("Por favor, escribe tu nombre antes de enviar.")
@@ -210,7 +215,7 @@ with st.sidebar:
                     idx_a_borrar = fila_a_borrar - 1
                     df_pedidos_admin = df_pedidos_admin.drop(df_pedidos_admin.index[idx_a_borrar])
                     df_pedidos_admin.to_csv(ARCV_PEDIDOS, index=False, sep=";")
-                    st.success(f"¡Pedido #{fila_a_borrar} eliminado!")
+                    st.session_state["mensaje_exito"] = f"¡Pedido #{fila_a_borrar} eliminado!"
                     st.rerun()
 
         # --- RESETEAR BASE DE DATOS ---
@@ -219,7 +224,7 @@ with st.sidebar:
         if st.button("Borrar pedidos anteriores"):
             if os.path.exists(ARCV_PEDIDOS):
                 os.remove(ARCV_PEDIDOS)
-                st.success("¡Base de datos reiniciada para un nuevo día!")
+                st.session_state["mensaje_exito"] = "¡Base de datos reiniciada para un nuevo día!"
                 st.rerun()
 
     elif password_ingresada != "":
