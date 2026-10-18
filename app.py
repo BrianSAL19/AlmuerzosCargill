@@ -122,7 +122,7 @@ if os.path.exists(ARCV_PEDIDOS):
             fig, ax = plt.subplots(figsize=(11, alto_figura), dpi=250)
             ax.axis('off')
             
-            plt.title("REPORTE DE PEDIDOS DE ALMUERZO", fontsize=18, fontweight='bold', pad=20, color='#0F172A')
+            plt.title("REPORTE DE PEDIDOS DE ALMUERZO", fontsize=30, fontweight='bold', pad=20, color='#0F172A')
             
             col_widths = [0.05, 0.10, 0.11, 0.18, 0.09, 0.16]
 
