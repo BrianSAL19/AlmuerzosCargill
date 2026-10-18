@@ -15,7 +15,7 @@ OPCIONES_SEGUNDO = [
     "Arroz con camaron"
 ]
 
-# 🔑 CAMBIA ESTA CONTRASEÑA PARA ACCEDER AL PANEL DE ADMINISTRADOR
+# 🔑 CAMBIA ESTA CONTRASEÑA PARA TU ACCESO ADMINISTRADOR
 CLAVE_ADMIN = "admin123"
 # ====================================================================
 
@@ -101,29 +101,30 @@ if os.path.exists(ARCV_PEDIDOS):
 
         st.divider()
 
-        # --- GENERACIÓN DE IMAGEN ---
+        # --- GENERACIÓN DE IMAGEN CON LETRA GRANDE Y FORMATO MULTILÍNEA CORREGIDO ---
         st.subheader("🖼️ Generar imagen para compartir por WhatsApp")
 
         def generar_imagen_perfecta(df, completo, solo_seg):
             df_fmt = df.copy()
             
+            # Renombramos el encabezado para que salga en dos líneas
             df_fmt = df_fmt.rename(columns={"Tipo de Almuerzo": "Tipo de\nAlmuerzo"})
 
+            # Saltos de línea ajustados para no cortar palabras cortas como "Completo"
+            df_fmt['Segundo'] = df_fmt['Segundo'].apply(lambda x: textwrap.fill(str(x), width=14))
+            df_fmt['Observaciones'] = df_fmt['Observaciones'].apply(lambda x: textwrap.fill(str(x), width=10))
             df_fmt['Nombre'] = df_fmt['Nombre'].apply(lambda x: textwrap.fill(str(x), width=12))
             df_fmt['Tipo de\nAlmuerzo'] = df_fmt['Tipo de\nAlmuerzo'].apply(lambda x: textwrap.fill(str(x), width=10))
-            df_fmt['Segundo'] = df_fmt['Segundo'].apply(lambda x: textwrap.fill(str(x), width=16))
-            df_fmt['Arroz'] = df_fmt['Arroz'].apply(lambda x: textwrap.fill(str(x), width=10))
-            df_fmt['Observaciones'] = df_fmt['Observaciones'].apply(lambda x: textwrap.fill(str(x), width=11))
 
             num_filas = len(df_fmt)
-            alto_figura = max(5.0, num_filas * 1.05 + 3.2)
+            alto_figura = max(5.0, num_filas * 0.95 + 3.0)
             
             fig, ax = plt.subplots(figsize=(11, alto_figura), dpi=250)
             ax.axis('off')
             
-            plt.title("REPORTE DE PEDIDOS DE ALMUERZO", fontsize=18, fontweight='bold', pad=22, color='#0F172A')
+            plt.title("REPORTE DE PEDIDOS DE ALMUERZO", fontsize=18, fontweight='bold', pad=20, color='#0F172A')
             
-            col_widths = [0.06, 0.18, 0.16, 0.28, 0.12, 0.20]
+            col_widths = [0.05, 0.10, 0.11, 0.18, 0.09, 0.16]
 
             tabla = ax.table(
                 cellText=df_fmt.values,
@@ -131,17 +132,16 @@ if os.path.exists(ARCV_PEDIDOS):
                 colWidths=col_widths,
                 cellLoc='center',
                 loc='top',
-                bbox=[0, 0.18, 1, 0.74]
+                bbox=[0, 0.20, 1, 0.72]
             )
             
             tabla.auto_set_font_size(False)
-            tabla.set_fontsize(15)
+            tabla.set_fontsize(17)
             
             for (r, c), cell in tabla.get_celld().items():
                 if r == 0:
                     cell.set_facecolor('#1D4ED8')
-                    cell.set_text_props(color='white', weight='bold', fontsize=16)
-                    cell.set_height(0.12)
+                    cell.set_text_props(color='white', weight='bold', fontsize=18)
                 else:
                     color_fondo = '#F8FAFC' if r % 2 == 0 else '#FFFFFF'
                     cell.set_facecolor(color_fondo)
@@ -157,7 +157,7 @@ if os.path.exists(ARCV_PEDIDOS):
             
             plt.text(
                 0.5, 0.04, texto_resumen, 
-                ha='center', va='center', fontsize=14, fontweight='bold',
+                ha='center', va='center', fontsize=15, fontweight='bold',
                 color='#0F172A',
                 bbox=dict(boxstyle='round,pad=0.8', facecolor='#E2E8F0', edgecolor='#94A3B8', linewidth=1.2)
             )
@@ -185,7 +185,7 @@ if os.path.exists(ARCV_PEDIDOS):
         st.info("Aún no hay pedidos registrados hoy.")
 
 # ====================================================================
-# 🔒 PANEL DE ADMINISTRACIÓN PROTEGIDO (EN LA BARRA LATERAL)
+# 🔒 PANEL DE ADMINISTRACIÓN PROTEGIDO (BARRA LATERAL)
 # ====================================================================
 with st.sidebar:
     st.title("⚙️ Administración")
@@ -193,8 +193,7 @@ with st.sidebar:
 
     if password_ingresada == CLAVE_ADMIN:
         st.success("Acceso concedido")
-        st.subheader("🛠️ Acciones de Control")
-
+        
         if os.path.exists(ARCV_PEDIDOS):
             df_pedidos_admin = pd.read_csv(ARCV_PEDIDOS, sep=";")
             
@@ -204,8 +203,8 @@ with st.sidebar:
                 
                 # --- ELIMINAR PEDIDO INDIVIDUAL ---
                 st.markdown("---")
-                st.write("**🗑️ Eliminar un pedido:**")
-                fila_a_borrar = st.selectbox("Selecciona el # a borrar:", df_admin_show["#"])
+                st.subheader("🗑️ Eliminar un pedido erróneo")
+                fila_a_borrar = st.selectbox("Selecciona el número de persona (#) a eliminar:", df_admin_show["#"])
                 
                 if st.button("Eliminar pedido seleccionado"):
                     idx_a_borrar = fila_a_borrar - 1
@@ -216,11 +215,11 @@ with st.sidebar:
 
         # --- RESETEAR BASE DE DATOS ---
         st.markdown("---")
-        st.write("**⚠️ Resetear base de datos:**")
-        if st.button("Borrar todos los pedidos"):
+        st.subheader("⚠️ Resetear base de datos")
+        if st.button("Borrar pedidos anteriores"):
             if os.path.exists(ARCV_PEDIDOS):
                 os.remove(ARCV_PEDIDOS)
-                st.success("¡Base de datos reiniciada!")
+                st.success("¡Base de datos reiniciada para un nuevo día!")
                 st.rerun()
 
     elif password_ingresada != "":
