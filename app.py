@@ -53,6 +53,11 @@ st.title("🍱 Registro de Pedidos de Almuerzo")
 # ====================================================================
 st.markdown("""
     <style>
+    /* Ocultar barra superior, menú desplegable y pie de página de Streamlit */
+    header {visibility: hidden !important; display: none !important;}
+    #MainMenu {visibility: hidden !important; display: none !important;}
+    footer {visibility: hidden !important; display: none !important;}
+    .viewerBadge_container__1QSob {display: none !important;}
     /* Forzar tamaño gigante en radio buttons y sus opciones */
     div[data-baseweb="radio"] label, 
     div[data-testid="stRadio"] label,
