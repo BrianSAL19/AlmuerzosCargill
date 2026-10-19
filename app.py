@@ -60,9 +60,8 @@ def cargar_datos_semana():
         except Exception:
             pass
     
-    # Por primera vez inicia totalmente VACÍO
     return {
-        "texto_semana": "",
+        "texto_semana": "Del 26 al 30 de octubre",
         "dias": {
             "Lunes": {"Completos": 0, "Segundos": 0},
             "Martes": {"Completos": 0, "Segundos": 0},
@@ -341,8 +340,7 @@ with st.sidebar:
         st.subheader("🗓️ Nombre de la Semana (Manual)")
         nuevo_texto_semana = st.text_input(
             "Rango de la Semana:", 
-            value=semana_data.get("texto_semana", ""),
-            placeholder="Ej: Del 19 al 23 de octubre"
+            value=semana_data.get("texto_semana", "Del 26 al 30 de octubre")
         )
         if st.button("💾 Guardar Texto de Semana"):
             semana_data["texto_semana"] = nuevo_texto_semana.strip()
@@ -356,6 +354,7 @@ with st.sidebar:
         
         nombres_dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
         
+        # Inicializar índice en session_state si no existe
         if "dia_ficticio_prueba" not in st.session_state:
             st.session_state["dia_ficticio_prueba"] = semana_data.get("dia_ficticio_prueba", 0)
 
@@ -389,10 +388,12 @@ with st.sidebar:
                     completos_dia = int((df_pedidos_cierre["Tipo de Almuerzo"] == "Completo").sum())
                     segundos_dia = int((df_pedidos_cierre["Tipo de Almuerzo"] == "Solo segundo").sum())
 
+                    # Cargar última versión del archivo semanal
                     semana_data_fresca = cargar_datos_semana()
                     semana_data_fresca["dias"][dia_seleccionado_manual]["Completos"] = completos_dia
                     semana_data_fresca["dias"][dia_seleccionado_manual]["Segundos"] = segundos_dia
 
+                    # Calcular el siguiente día para avanzar el selector automáticamente
                     idx_actual = nombres_dias.index(dia_seleccionado_manual)
                     idx_siguiente = (idx_actual + 1) % 5
                     
@@ -401,6 +402,7 @@ with st.sidebar:
 
                     guardar_datos_semana(semana_data_fresca)
                     
+                    # Limpiar lista diaria
                     pd.DataFrame(columns=COLUMNAS).to_csv(ARCV_PEDIDOS, index=False, sep=";")
                     st.session_state["estado_manual_pedidos"] = None
                     
@@ -485,8 +487,8 @@ with st.sidebar:
 
         gran_total_semana = tot_comp_val + tot_seg_val
 
-        texto_sem = semana_actual_export.get('texto_semana', '')
-        if texto_sem and not texto_sem.lower().startswith("del"):
+        texto_sem = semana_actual_export.get('texto_semana', 'Del 26 al 30 de octubre')
+        if not texto_sem.lower().startswith("del"):
             texto_sem = f"Del {texto_sem}"
 
         filas_csv = [
