@@ -8,27 +8,14 @@ from datetime import datetime, timezone, timedelta
 from io import BytesIO
 
 # ====================================================================
-# 🔑 CONFIGURACIÓN Y ESTADO DE SESIÓN
+# 🔑 CONFIGURACIÓN Y ARCHIVOS DE DATOS
 # ====================================================================
 CLAVE_ADMIN = "admin123"
+ARCV_PEDIDOS = "pedidos_almuerzo.csv"
+ARCV_MENU = "menu_dia.json"
 COLUMNAS = ["Nombre", "Tipo de Almuerzo", "Segundo", "Arroz", "Observaciones"]
 
-st.set_page_config(page_title="Registro de Pedidos de Almuerzo", page_icon="🍱")
-
-SEDES_DISPONIBLES = ["OM Cargill", "OM Oficina"]
-
-# Inicializar la sede en la sesión si aún no existe
-if "sede_activa" not in st.session_state:
-    st.session_state["sede_activa"] = "OM Cargill"
-
-sede_seleccionada = st.session_state["sede_activa"]
-
-# Mapeo de archivos independientes según la sede configurada por el admin
-slug_sede = sede_seleccionada.lower().replace(" ", "_")
-ARCV_PEDIDOS = f"pedidos_{slug_sede}.csv"
-ARCV_MENU = f"menu_{slug_sede}.json"
-
-# Cargar o inicializar el menú del día por sede
+# Cargar o inicializar el menú del día
 MENU_DEFAULT = {
     "caldo": "Caldo: Menestron de carne",
     "segundos": [
@@ -54,12 +41,12 @@ menu_actual = cargar_menu()
 TEXTO_CALDO = menu_actual.get("caldo", MENU_DEFAULT["caldo"])
 OPCIONES_SEGUNDO = menu_actual.get("segundos", MENU_DEFAULT["segundos"])
 
-# Si el archivo de pedidos de la sede no existe, lo creamos
+# Si el archivo de pedidos no existe, lo creamos
 if not os.path.exists(ARCV_PEDIDOS):
     df_inicial = pd.DataFrame(columns=COLUMNAS)
     df_inicial.to_csv(ARCV_PEDIDOS, index=False, sep=";")
 
-st.title(f"🍱 Registro de Pedidos - {sede_seleccionada}")
+st.title("🍱 Registro de Pedidos de Almuerzo")
 
 # ====================================================================
 # 🎨 ESTILOS CSS INTENSIVOS PARA MÓVILES (OPCIONES Y ENTRADAS GRANDES)
@@ -142,7 +129,7 @@ if st.button("Guardar Pedido"):
         }])
         
         nuevo_pedido.to_csv(ARCV_PEDIDOS, mode='a', header=False, index=False, sep=";")
-        st.session_state["msg_pedido"] = f"✅ Pedido registrado con éxito en {sede_seleccionada} para {nombre.strip()}"
+        st.session_state["msg_pedido"] = f"✅ Pedido registrado con éxito para {nombre.strip()}"
         st.rerun()
     else:
         st.warning("Por favor, escribe tu nombre antes de enviar.")
@@ -155,7 +142,7 @@ if "msg_pedido" in st.session_state:
 st.divider()
 
 # --- SECCIÓN 2: LISTA Y GESTIÓN DE PEDIDOS ---
-st.header(f"📋 Lista Consolidada - {sede_seleccionada}")
+st.header("📋 Lista Consolidada de Pedidos")
 
 if os.path.exists(ARCV_PEDIDOS):
     df_pedidos = pd.read_csv(ARCV_PEDIDOS, sep=";")
@@ -201,18 +188,18 @@ if os.path.exists(ARCV_PEDIDOS):
         # --- GENERACIÓN DE IMAGEN CON ZONA HORARIA ECUADOR (UTC-5) ---
         st.subheader("🖼️ Generar imagen para compartir por WhatsApp")
 
-        def generar_imagen_perfecta(df, completo, solo_seg, sede):
+        def generar_imagen_perfecta(df, completo, solo_seg):
             df_fmt = df.copy()
             
             df_fmt = df_fmt.rename(columns={"Tipo de Almuerzo": "Tipo de\nAlmuerzo"})
 
-            df_fmt['Segundo'] = df_fmt['Segundo'].apply(lambda x: textwrap.fill(str(x), width=13))
-            df_fmt['Observaciones'] = df_fmt['Observaciones'].apply(lambda x: textwrap.fill(str(x), width=8))
-            df_fmt['Nombre'] = df_fmt['Nombre'].apply(lambda x: textwrap.fill(str(x), width=11))
+            df_fmt['Segundo'] = df_fmt['Segundo'].apply(lambda x: textwrap.fill(str(x), width=14))
+            df_fmt['Observaciones'] = df_fmt['Observaciones'].apply(lambda x: textwrap.fill(str(x), width=10))
+            df_fmt['Nombre'] = df_fmt['Nombre'].apply(lambda x: textwrap.fill(str(x), width=12))
             df_fmt['Tipo de\nAlmuerzo'] = df_fmt['Tipo de\nAlmuerzo'].apply(lambda x: textwrap.fill(str(x), width=10))
 
             num_filas = len(df_fmt)
-            alto_figura = max(5.0, num_filas * 1.1 + 3.0)
+            alto_figura = max(5.0, num_filas * 0.95 + 3.0)
             
             fig, ax = plt.subplots(figsize=(11, alto_figura), dpi=250)
             ax.axis('off')
@@ -220,11 +207,11 @@ if os.path.exists(ARCV_PEDIDOS):
             # 📅 FECHA EXACTA DE ECUADOR (UTC-5)
             zona_ecuador = timezone(timedelta(hours=-5))
             fecha_hoy = datetime.now(zona_ecuador).strftime("%d/%m/%Y")
-            titulo_con_fecha = f"REPORTE PEDIDOS - {sede.upper()}\n({fecha_hoy})"
+            titulo_con_fecha = f"REPORTE DE PEDIDOS DE ALMUERZO ({fecha_hoy})"
             
-            plt.title(titulo_con_fecha, fontsize=24, fontweight='bold', pad=20, color='#0F172A')
+            plt.title(titulo_con_fecha, fontsize=26, fontweight='bold', pad=20, color='#0F172A')
             
-            col_widths = [0.05, 0.12, 0.13, 0.22, 0.10, 0.18]
+            col_widths = [0.05, 0.13, 0.11, 0.18, 0.09, 0.16]
 
             tabla = ax.table(
                 cellText=df_fmt.values,
@@ -236,12 +223,12 @@ if os.path.exists(ARCV_PEDIDOS):
             )
             
             tabla.auto_set_font_size(False)
-            tabla.set_fontsize(15)
+            tabla.set_fontsize(17)
             
             for (r, c), cell in tabla.get_celld().items():
                 if r == 0:
                     cell.set_facecolor('#1D4ED8')
-                    cell.set_text_props(color='white', weight='bold', fontsize=17)
+                    cell.set_text_props(color='white', weight='bold', fontsize=18)
                 else:
                     color_fondo = '#F8FAFC' if r % 2 == 0 else '#FFFFFF'
                     cell.set_facecolor(color_fondo)
@@ -251,7 +238,7 @@ if os.path.exists(ARCV_PEDIDOS):
                 cell.set_linewidth(1.0)
 
             texto_resumen = (
-                f"RESUMEN DE TOTALES ({sede}):\n"
+                f"RESUMEN DE TOTALES:\n"
                 f"• Almuerzos Completos: {completo}   |   • Solo Segundo: {solo_seg}   |   • Total Pedidos: {len(df_fmt)}"
             )
             
@@ -270,9 +257,9 @@ if os.path.exists(ARCV_PEDIDOS):
             plt.close(fig)
             return buffer
 
-        buf_imagen = generar_imagen_perfecta(df_mostrar, cant_completo, cant_solo_segundo, sede_seleccionada)
+        buf_imagen = generar_imagen_perfecta(df_mostrar, cant_completo, cant_solo_segundo)
 
-        st.image(buf_imagen, caption=f"Vista previa de la imagen - {sede_seleccionada}", use_container_width=True)
+        st.image(buf_imagen, caption="Vista previa de la imagen a enviar", use_container_width=True)
 
         zona_ecuador = timezone(timedelta(hours=-5))
         fecha_archivo = datetime.now(zona_ecuador).strftime('%Y_%m_%d')
@@ -280,43 +267,26 @@ if os.path.exists(ARCV_PEDIDOS):
         st.download_button(
             label="📲 Descargar Imagen JPG (Para WhatsApp)",
             data=buf_imagen,
-            file_name=f"pedidos_{slug_sede}_{fecha_archivo}.jpg",
+            file_name=f"pedidos_{fecha_archivo}.jpg",
             mime="image/jpeg",
         )
 
     else:
-        st.info(f"Aún no hay pedidos registrados hoy para {sede_seleccionada}.")
+        st.info("Aún no hay pedidos registrados hoy.")
 
 # ====================================================================
 # 🔒 PANEL DE ADMINISTRACIÓN PROTEGIDO (BARRA LATERAL)
 # ====================================================================
 with st.sidebar:
     st.title("⚙️ Administración")
-    
     password_ingresada = st.text_input("Clave de Admin:", type="password")
 
     if password_ingresada == CLAVE_ADMIN:
         st.success("Acceso concedido")
         
-        # --- SELECTOR DE SEDE / EMPRESA DENTRO DEL MODO ADMIN ---
-        st.markdown("---")
-        st.subheader("🏢 Seleccionar Sede/Lugar")
-        
-        idx_actual = SEDES_DISPONIBLES.index(sede_seleccionada) if sede_seleccionada in SEDES_DISPONIBLES else 0
-        nueva_sede = st.selectbox(
-            "Selecciona la Sede activa:",
-            SEDES_DISPONIBLES,
-            index=idx_actual
-        )
-        
-        if nueva_sede != st.session_state["sede_activa"]:
-            st.session_state["sede_activa"] = nueva_sede
-            st.session_state["msg_admin"] = f"Sede cambiada a: {nueva_sede}"
-            st.rerun()
-
         # --- CAMBIAR MENÚ DEL DÍA ---
         st.markdown("---")
-        st.subheader(f"🍱 Menú del Día ({sede_seleccionada})")
+        st.subheader("🍱 Actualizar Menú del Día")
         
         nuevo_caldo_input = st.text_input("Nombre del Caldo:", value=TEXTO_CALDO.replace("Caldo: ", ""))
         
@@ -327,7 +297,7 @@ with st.sidebar:
             height=120
         )
 
-        if st.button("💾 Guardar Menú"):
+        if st.button("💾 Guardar Menú del Día"):
             lista_segundos = [s.strip() for s in nuevos_segundos_input.split("\n") if s.strip()]
             if lista_segundos and nuevo_caldo_input.strip():
                 nuevo_menu = {
@@ -335,7 +305,7 @@ with st.sidebar:
                     "segundos": lista_segundos
                 }
                 guardar_menu(nuevo_menu)
-                st.session_state["msg_admin"] = f"¡Menú de {sede_seleccionada} actualizado con éxito!"
+                st.session_state["msg_admin"] = "¡Menú del día actualizado con éxito!"
                 st.rerun()
             else:
                 st.error("Por favor completa el caldo y al menos una opción de segundo.")
@@ -350,22 +320,22 @@ with st.sidebar:
                 # --- ELIMINAR PEDIDO INDIVIDUAL ---
                 st.markdown("---")
                 st.subheader("🗑️ Eliminar un pedido erróneo")
-                fila_a_borrar = st.selectbox("Selecciona el número (#) a eliminar:", df_admin_show["#"])
+                fila_a_borrar = st.selectbox("Selecciona el número de persona (#) a eliminar:", df_admin_show["#"])
                 
                 if st.button("Eliminar pedido seleccionado"):
                     idx_a_borrar = fila_a_borrar - 1
                     df_pedidos_admin = df_pedidos_admin.drop(df_pedidos_admin.index[idx_a_borrar])
                     df_pedidos_admin.to_csv(ARCV_PEDIDOS, index=False, sep=";")
-                    st.session_state["msg_admin"] = f"¡Pedido #{fila_a_borrar} de {sede_seleccionada} eliminado!"
+                    st.session_state["msg_admin"] = f"¡Pedido #{fila_a_borrar} eliminado!"
                     st.rerun()
 
         # --- RESETEAR BASE DE DATOS ---
         st.markdown("---")
         st.subheader("⚠️ Resetear base de datos")
-        if st.button(f"Borrar pedidos de {sede_seleccionada}"):
+        if st.button("Borrar pedidos anteriores"):
             if os.path.exists(ARCV_PEDIDOS):
                 os.remove(ARCV_PEDIDOS)
-                st.session_state["msg_admin"] = f"¡Base de datos de {sede_seleccionada} reiniciada para un nuevo día!"
+                st.session_state["msg_admin"] = "¡Base de datos reiniciada para un nuevo día!"
                 st.rerun()
 
     elif password_ingresada != "":
