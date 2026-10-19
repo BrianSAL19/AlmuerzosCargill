@@ -273,7 +273,7 @@ if os.path.exists(ARCV_PEDIDOS):
 
             # TABLA EN SU TAMAÑO ORIGINAL INTACTO
             # La tabla se posiciona desde la parte superior
-            pos_y_inferior_tabla = 0.18
+            pos_y_inferior_tabla = 0.15
             tabla = ax.table(
                 cellText=df_fmt.values,
                 colLabels=df_fmt.columns,
