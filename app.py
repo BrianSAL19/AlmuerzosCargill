@@ -120,10 +120,10 @@ st.markdown("""
     }
 
     /* Botón Guardar Pedido */
-    .stButton button {
+    .stButton button, div[data-testid="stFormSubmitButton"] button {
         padding: 12px 24px !important;
     }
-    .stButton button p {
+    .stButton button p, div[data-testid="stFormSubmitButton"] button p {
         font-size: 22px !important;
         font-weight: bold !important;
     }
@@ -155,39 +155,42 @@ st.header(TEXTO_CALDO)
 if pedidos_cerrados:
     st.warning("⏰ **Los pedidos de hoy se encuentran CERRADOS.** (Atención de 4:00 AM a 5:00 PM)")
 else:
-    st.markdown("#### **Tu nombre:**")
-    nombre = st.text_input("Tu nombre:", label_visibility="collapsed")
+    with st.form(key="form_registro_pedido", clear_on_submit=True):
+        st.markdown("#### **Tu nombre:**")
+        nombre = st.text_input("Tu nombre:", label_visibility="collapsed")
 
-    st.markdown("#### **¿Completo o solo segundo?:**")
-    completo_segundo = st.radio("¿Completo o solo segundo?:", ["Completo", "Solo segundo"], label_visibility="collapsed")
+        st.markdown("#### **¿Completo o solo segundo?:**")
+        completo_segundo = st.radio("¿Completo o solo segundo?:", ["Completo", "Solo segundo"], label_visibility="collapsed")
 
-    st.markdown("#### **Selecciona el segundo:**")
-    seleccion_segundo = st.radio("Selecciona el segundo:", OPCIONES_SEGUNDO, label_visibility="collapsed")
+        st.markdown("#### **Selecciona el segundo:**")
+        seleccion_segundo = st.radio("Selecciona el segundo:", OPCIONES_SEGUNDO, label_visibility="collapsed")
 
-    st.markdown("#### **Selecciona el arroz:**")
-    tipo_arroz = st.radio("Selecciona el arroz:", ["Blanco", "Moro"], label_visibility="collapsed")
+        st.markdown("#### **Selecciona el arroz:**")
+        tipo_arroz = st.radio("Selecciona el arroz:", ["Blanco", "Moro"], label_visibility="collapsed")
 
-    st.markdown("#### **Observaciones (opcional):**")
-    notas = st.text_area("Observaciones (opcional):", placeholder="Ej: MADURO EXTRA", label_visibility="collapsed")
+        st.markdown("#### **Observaciones (opcional):**")
+        notas = st.text_area("Observaciones (opcional):", placeholder="Ej: MADURO EXTRA", label_visibility="collapsed")
 
-    if st.button("Guardar Pedido"):
-        if nombre.strip():
-            observaciones_texto = notas.strip() if notas.strip() else "----"
+        btn_guardar = st.form_submit_button("Guardar Pedido")
 
-            nuevo_pedido = pd.DataFrame([{
-                "Nombre": nombre.strip(),
-                "Tipo de Almuerzo": completo_segundo,
-                "Segundo": seleccion_segundo,
-                "Arroz": tipo_arroz,
-                "Observaciones": observaciones_texto
-            }])
-            
-            nuevo_pedido.to_csv(ARCV_PEDIDOS, mode='a', header=False, index=False, sep=";")
-            st.balloons()
-            st.session_state["msg_pedido"] = f"✅ Pedido registrado con éxito para {nombre.strip()}"
-            st.rerun()
-        else:
-            st.warning("Por favor, escribe tu nombre antes de enviar.")
+        if btn_guardar:
+            if nombre.strip():
+                observaciones_texto = notas.strip() if notas.strip() else "----"
+
+                nuevo_pedido = pd.DataFrame([{
+                    "Nombre": nombre.strip(),
+                    "Tipo de Almuerzo": completo_segundo,
+                    "Segundo": seleccion_segundo,
+                    "Arroz": tipo_arroz,
+                    "Observaciones": observaciones_texto
+                }])
+                
+                nuevo_pedido.to_csv(ARCV_PEDIDOS, mode='a', header=False, index=False, sep=";")
+                st.balloons()
+                st.session_state["msg_pedido"] = f"✅ Pedido registrado con éxito para {nombre.strip()}"
+                st.rerun()
+            else:
+                st.warning("Por favor, escribe tu nombre antes de enviar.")
 
 # --- MENSAJE DE PEDIDO REGISTRADO ---
 if "msg_pedido" in st.session_state:
@@ -253,7 +256,7 @@ if os.path.exists(ARCV_PEDIDOS):
             df_fmt['Tipo de\nAlmuerzo'] = df_fmt['Tipo de\nAlmuerzo'].apply(lambda x: textwrap.fill(str(x), width=10))
 
             num_filas = len(df_fmt)
-            alto_figura = max(5.0, num_filas * 0.95 + 3.0)
+            alto_figura = max(5.5, num_filas * 0.95 + 3.8)
             
             fig, ax = plt.subplots(figsize=(11, alto_figura), dpi=250)
             ax.axis('off')
@@ -271,7 +274,7 @@ if os.path.exists(ARCV_PEDIDOS):
                 colWidths=col_widths,
                 cellLoc='center',
                 loc='top',
-                bbox=[0, 0.20, 1, 0.72]
+                bbox=[0, 0.28, 1, 0.65]
             )
             
             tabla.auto_set_font_size(False)
@@ -289,14 +292,24 @@ if os.path.exists(ARCV_PEDIDOS):
                 cell.set_edgecolor('#CBD5E1')
                 cell.set_linewidth(1.0)
 
+            # CONSTRUCCIÓN DINÁMICA DEL RESUMEN DE SEGUNDOS (OPCIONES DEL DÍA)
+            resumen_segundos_lista = []
+            if "Segundo" in df.columns:
+                for plato, cantidad in df["Segundo"].value_counts().items():
+                    resumen_segundos_lista.append(f"• {plato}: {cantidad}")
+            
+            texto_segundos_str = "   |   ".join(resumen_segundos_lista)
+
             texto_resumen = (
                 f"RESUMEN DE TOTALES:\n"
                 f"• Almuerzos Completos: {completo}   |   • Solo Segundo: {solo_seg}   |   • Total Pedidos: {len(df_fmt)}"
             )
+            if texto_segundos_str:
+                texto_resumen += f"\nOPCIONES DE SEGUNDO:\n{texto_segundos_str}"
             
             plt.text(
-                0.5, 0.04, texto_resumen, 
-                ha='center', va='center', fontsize=15, fontweight='bold',
+                0.5, 0.06, texto_resumen, 
+                ha='center', va='center', fontsize=16, fontweight='bold',
                 color='#0F172A',
                 bbox=dict(boxstyle='round,pad=0.8', facecolor='#E2E8F0', edgecolor='#94A3B8', linewidth=1.2)
             )
