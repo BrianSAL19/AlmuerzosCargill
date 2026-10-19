@@ -256,7 +256,9 @@ if os.path.exists(ARCV_PEDIDOS):
             df_fmt['Tipo de\nAlmuerzo'] = df_fmt['Tipo de\nAlmuerzo'].apply(lambda x: textwrap.fill(str(x), width=10))
 
             num_filas = len(df_fmt)
-            alto_figura = max(5.5, num_filas * 0.95 + 3.8)
+            
+            # Ajuste perfecto del alto total del lienzo para recortar espacios muertos
+            alto_figura = max(5.5, num_filas * 0.95 + 3)
             
             fig, ax = plt.subplots(figsize=(11, alto_figura), dpi=250)
             ax.axis('off')
@@ -264,17 +266,21 @@ if os.path.exists(ARCV_PEDIDOS):
             fecha_hoy = datetime.now(ZONA_ECUADOR).strftime("%d/%m/%Y")
             titulo_con_fecha = f"REPORTE DE PEDIDOS DE ALMUERZO ({fecha_hoy})"
             
-            plt.title(titulo_con_fecha, fontsize=26, fontweight='bold', pad=20, color='#0F172A')
+            # Título exactamente arriba de la tabla
+            plt.title(titulo_con_fecha, fontsize=26, fontweight='bold', pad=18, color='#0F172A')
             
             col_widths = [0.05, 0.13, 0.11, 0.18, 0.09, 0.16]
 
+            # TABLA EN SU TAMAÑO ORIGINAL INTACTO
+            # La tabla se posiciona desde la parte superior
+            pos_y_inferior_tabla = 0.18
             tabla = ax.table(
                 cellText=df_fmt.values,
                 colLabels=df_fmt.columns,
                 colWidths=col_widths,
                 cellLoc='center',
                 loc='top',
-                bbox=[0, 0.28, 1, 0.65]
+                bbox=[0, pos_y_inferior_tabla, 1, 0.78]
             )
             
             tabla.auto_set_font_size(False)
@@ -292,7 +298,7 @@ if os.path.exists(ARCV_PEDIDOS):
                 cell.set_edgecolor('#CBD5E1')
                 cell.set_linewidth(1.0)
 
-            # CONSTRUCCIÓN DINÁMICA DEL RESUMEN DE SEGUNDOS (OPCIONES DEL DÍA)
+            # CONSTRUCCIÓN DINÁMICA DEL RESUMEN DE SEGUNDOS
             resumen_segundos_lista = []
             if "Segundo" in df.columns:
                 for plato, cantidad in df["Segundo"].value_counts().items():
@@ -307,11 +313,12 @@ if os.path.exists(ARCV_PEDIDOS):
             if texto_segundos_str:
                 texto_resumen += f"\nOPCIONES DE SEGUNDO:\n{texto_segundos_str}"
             
+            # Cuadro de resumen pegado pegadito debajo de la tabla
             plt.text(
-                0.5, 0.06, texto_resumen, 
-                ha='center', va='center', fontsize=16, fontweight='bold',
+                0.5, 0.08, texto_resumen, 
+                ha='center', va='top', fontsize=14, fontweight='bold',
                 color='#0F172A',
-                bbox=dict(boxstyle='round,pad=0.8', facecolor='#E2E8F0', edgecolor='#94A3B8', linewidth=1.2)
+                bbox=dict(boxstyle='round,pad=0.7', facecolor='#E2E8F0', edgecolor='#94A3B8', linewidth=1.2)
             )
             
             plt.tight_layout()
