@@ -10,7 +10,7 @@ from io import BytesIO
 # ====================================================================
 # 🔑 CONFIGURACIÓN, COSTOS Y ARCHIVOS DE DATOS
 # ====================================================================
-CLAVE_ADMIN = "admin123"
+CLAVE_ADMIN = "brian"
 ARCV_PEDIDOS = "pedidos_almuerzo.csv"
 ARCV_SEMANA = "resumen_semanal.json"
 ARCV_MENU = "menu_dia.json"
@@ -25,7 +25,7 @@ ZONA_ECUADOR = timezone(timedelta(hours=-5))
 
 # Cargar o inicializar el menú del día
 MENU_DEFAULT = {
-    "caldo": "Caldo: Menestron de carne",
+    "caldo": "Caldo: Menestron de pollo",
     "segundos": [
         "Pollo al horno con ensalada de remolacha",
         "Arroz con camaron"
@@ -49,30 +49,19 @@ menu_actual = cargar_menu()
 TEXTO_CALDO = menu_actual.get("caldo", MENU_DEFAULT["caldo"])
 OPCIONES_SEGUNDO = menu_actual.get("segundos", MENU_DEFAULT["segundos"])
 
-# Inicializar o cargar datos semanales
-def obtener_fechas_semana_actual():
-    ahora = datetime.now(ZONA_ECUADOR)
-    lunes = ahora - timedelta(days=ahora.weekday())
-    viernes = lunes + timedelta(days=4)
-    
-    meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", 
-             "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
-    
-    del_texto = f"Del {lunes.day} al {viernes.day} de {meses[viernes.month - 1]}"
-    return del_texto, lunes.strftime("%Y-%m-%d")
-
+# --- CARGAR Y GUARDAR ESTRUCTURA SEMANAL MANUAL ---
 def cargar_datos_semana():
     if os.path.exists(ARCV_SEMANA):
         try:
             with open(ARCV_SEMANA, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                if "dias" in data:
+                    return data
         except Exception:
             pass
     
-    texto_semana, fecha_inicio = obtener_fechas_semana_actual()
     return {
-        "texto_semana": texto_semana,
-        "fecha_inicio": fecha_inicio,
+        "texto_semana": "Del 26 al 30 de octubre",
         "dias": {
             "Lunes": {"Completos": 0, "Segundos": 0},
             "Martes": {"Completos": 0, "Segundos": 0},
@@ -150,12 +139,10 @@ if "msg_admin" in st.session_state:
 ahora_ec = datetime.now(ZONA_ECUADOR)
 hora_actual = ahora_ec.hour
 
-# Abierto automáticamente solo entre las 4:00 AM (4) y las 5:00 PM (17)
 fuera_de_horario_auto = hora_actual >= 17 or hora_actual < 4
 
-# Evaluar si hay un forzado manual desde el admin
 if "estado_manual_pedidos" not in st.session_state:
-    st.session_state["estado_manual_pedidos"] = None # None: usa automatico, True: forzar abierto, False: forzar cerrado
+    st.session_state["estado_manual_pedidos"] = None
 
 if st.session_state["estado_manual_pedidos"] is not None:
     pedidos_cerrados = not st.session_state["estado_manual_pedidos"]
@@ -348,19 +335,39 @@ with st.sidebar:
     if password_ingresada == CLAVE_ADMIN:
         st.success("Acceso concedido")
         
+        # --- CONFIGURACIÓN MANUAL DE LA SEMANA ---
+        st.markdown("---")
+        st.subheader("🗓️ Nombre de la Semana (Manual)")
+        nuevo_texto_semana = st.text_input(
+            "Rango de la Semana:", 
+            value=semana_data.get("texto_semana", "Del 26 al 30 de octubre")
+        )
+        if st.button("💾 Guardar Texto de Semana"):
+            semana_data["texto_semana"] = nuevo_texto_semana.strip()
+            guardar_datos_semana(semana_data)
+            st.session_state["msg_admin"] = "¡Rango de la semana actualizado!"
+            st.rerun()
+
         # --- CONTROL DE CIERRE MANUAL Y DÍA ACTUAL ---
         st.markdown("---")
-        st.subheader("🔒 Control de Cierre del Día")
+        st.subheader("🔒 Control y Acumulación")
         
         nombres_dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
-        idx_dia_real = datetime.now(ZONA_ECUADOR).weekday()
-        if idx_dia_real > 4: 
-            idx_dia_real = 0
-            
-        dia_activo_idx = semana_data.get("dia_ficticio_prueba", idx_dia_real)
-        dia_nombre_actual = nombres_dias[dia_activo_idx]
         
-        st.write(f"Día actual configurado: **{dia_nombre_actual}**")
+        # Inicializar índice en session_state si no existe
+        if "dia_ficticio_prueba" not in st.session_state:
+            st.session_state["dia_ficticio_prueba"] = semana_data.get("dia_ficticio_prueba", 0)
+
+        dia_activo_idx = st.session_state["dia_ficticio_prueba"]
+        if dia_activo_idx > 4:
+            dia_activo_idx = 0
+
+        dia_seleccionado_manual = st.selectbox(
+            "Acumular pedidos al día:", 
+            nombres_dias, 
+            index=dia_activo_idx,
+            key="dia_seleccionado_admin"
+        )
 
         if pedidos_cerrados:
             if st.button("🔓 Reabrir Pedidos Manualmente"):
@@ -374,51 +381,60 @@ with st.sidebar:
                 st.rerun()
 
         # --- BOTÓN DE PROCESAR Y ACUMULAR DÍA ---
-        if st.button(f"📥 Guardar y Acumular Pedidos a {dia_nombre_actual}"):
+        if st.button(f"📥 Guardar y Acumular Pedidos a {dia_seleccionado_manual}"):
             if os.path.exists(ARCV_PEDIDOS):
                 df_pedidos_cierre = pd.read_csv(ARCV_PEDIDOS, sep=";")
                 if not df_pedidos_cierre.empty:
-                    completos_dia = (df_pedidos_cierre["Tipo de Almuerzo"] == "Completo").sum()
-                    segundos_dia = (df_pedidos_cierre["Tipo de Almuerzo"] == "Solo segundo").sum()
+                    completos_dia = int((df_pedidos_cierre["Tipo de Almuerzo"] == "Completo").sum())
+                    segundos_dia = int((df_pedidos_cierre["Tipo de Almuerzo"] == "Solo segundo").sum())
 
-                    semana_data["dias"][dia_nombre_actual]["Completos"] = int(completos_dia)
-                    semana_data["dias"][dia_nombre_actual]["Segundos"] = int(segundos_dia)
+                    # Cargar última versión del archivo semanal
+                    semana_data_fresca = cargar_datos_semana()
+                    semana_data_fresca["dias"][dia_seleccionado_manual]["Completos"] = completos_dia
+                    semana_data_fresca["dias"][dia_seleccionado_manual]["Segundos"] = segundos_dia
 
-                    siguiente_idx = (dia_activo_idx + 1) % 5
-                    semana_data["dia_ficticio_prueba"] = siguiente_idx
-
-                    guardar_datos_semana(semana_data)
+                    # Calcular el siguiente día para avanzar el selector automáticamente
+                    idx_actual = nombres_dias.index(dia_seleccionado_manual)
+                    idx_siguiente = (idx_actual + 1) % 5
                     
+                    semana_data_fresca["dia_ficticio_prueba"] = idx_siguiente
+                    st.session_state["dia_ficticio_prueba"] = idx_siguiente
+
+                    guardar_datos_semana(semana_data_fresca)
+                    
+                    # Limpiar lista diaria
                     pd.DataFrame(columns=COLUMNAS).to_csv(ARCV_PEDIDOS, index=False, sep=";")
                     st.session_state["estado_manual_pedidos"] = None
                     
-                    if siguiente_idx == 0:
-                        st.session_state["alerta_nueva_semana"] = True
-                        
-                    st.session_state["msg_admin"] = f"¡Pedidos acumulados con éxito en {dia_nombre_actual}!"
+                    st.session_state["msg_admin"] = f"¡Se acumularon {completos_dia} completos y {segundos_dia} segundos en {dia_seleccionado_manual}! (Próximo día preparado: {nombres_dias[idx_siguiente]})"
                     st.rerun()
                 else:
                     st.warning("No hay pedidos registrados hoy para acumular.")
 
-        # ALERTA DE REEMPLAZO / NUEVA SEMANA
-        if st.session_state.get("alerta_nueva_semana", False):
-            st.warning("⚠️ Se ha completado el ciclo de la semana (Viernes). Si vuelves a guardar datos, pertenecerán a la PRÓXIMA SEMANA.")
-            if st.button("🔄 Confirmar e Iniciar Nueva Semana (Resetear Cuadro)"):
-                texto_semana, fecha_inicio = obtener_fechas_semana_actual()
-                semana_data["texto_semana"] = texto_semana
-                semana_data["fecha_inicio"] = fecha_inicio
-                semana_data["dias"] = {
-                    "Lunes": {"Completos": 0, "Segundos": 0},
-                    "Martes": {"Completos": 0, "Segundos": 0},
-                    "Miércoles": {"Completos": 0, "Segundos": 0},
-                    "Jueves": {"Completos": 0, "Segundos": 0},
-                    "Viernes": {"Completos": 0, "Segundos": 0}
-                }
-                semana_data["dia_ficticio_prueba"] = 0
-                guardar_datos_semana(semana_data)
-                del st.session_state["alerta_nueva_semana"]
-                st.session_state["msg_admin"] = "¡Tabla semanal reiniciada para la nueva semana!"
-                st.rerun()
+        # --- CONTROLES DE LIMPIEZA / PRUEBAS ---
+        st.markdown("---")
+        st.subheader("🧹 Gestión de Pruebas")
+        
+        dia_a_borrar = st.selectbox("Limpiar acumulado de un día:", nombres_dias, key="select_borrar_dia")
+        if st.button(f"🗑️ Borrar registro de {dia_a_borrar}"):
+            semana_data["dias"][dia_a_borrar] = {"Completos": 0, "Segundos": 0}
+            guardar_datos_semana(semana_data)
+            st.session_state["msg_admin"] = f"¡Registro de {dia_a_borrar} reiniciado a 0!"
+            st.rerun()
+
+        if st.button("🔄 Renovar Toda la Semana (Reiniciar a $0)"):
+            semana_data["dias"] = {
+                "Lunes": {"Completos": 0, "Segundos": 0},
+                "Martes": {"Completos": 0, "Segundos": 0},
+                "Miércoles": {"Completos": 0, "Segundos": 0},
+                "Jueves": {"Completos": 0, "Segundos": 0},
+                "Viernes": {"Completos": 0, "Segundos": 0}
+            }
+            semana_data["dia_ficticio_prueba"] = 0
+            st.session_state["dia_ficticio_prueba"] = 0
+            guardar_datos_semana(semana_data)
+            st.session_state["msg_admin"] = "¡Tabla semanal reiniciada por completo!"
+            st.rerun()
 
         # --- CAMBIAR MENÚ DEL DÍA ---
         st.markdown("---")
@@ -450,7 +466,9 @@ with st.sidebar:
         st.markdown("---")
         st.subheader("📊 Generar Reporte Semanal (Formato Exacto)")
         
-        d = semana_data["dias"]
+        semana_actual_export = cargar_datos_semana()
+        d = semana_actual_export["dias"]
+        
         comp_l = d["Lunes"]["Completos"]
         comp_m = d["Martes"]["Completos"]
         comp_mi = d["Miércoles"]["Completos"]
@@ -469,11 +487,15 @@ with st.sidebar:
 
         gran_total_semana = tot_comp_val + tot_seg_val
 
+        texto_sem = semana_actual_export.get('texto_semana', 'Del 26 al 30 de octubre')
+        if not texto_sem.lower().startswith("del"):
+            texto_sem = f"Del {texto_sem}"
+
         filas_csv = [
             ["Precio por almuerzo completo:", "", "", "", f"${PRECIO_COMPLETO:.2f}".replace(".", ",")],
             ["Precio por solo segundo:", "", "", "", f"${PRECIO_SEGUNDO:.2f}".replace(".", ",")],
             [""],
-            ["Semana:", f"Del {semana_data['texto_semana']}" if "Del" not in semana_data['texto_semana'] else semana_data['texto_semana']],
+            ["Semana:", texto_sem],
             ["Dia / Almuerzo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Total"],
             ["Completos", comp_l, comp_m, comp_mi, comp_j, comp_v, f"${tot_comp_val:.2f}".replace(".", ",")],
             ["Segundos", seg_l, seg_m, seg_mi, seg_j, seg_v, f"${tot_seg_val:.2f}".replace(".", ",")],
@@ -486,7 +508,7 @@ with st.sidebar:
         st.download_button(
             label="📥 Descargar CSV Semanal (Formato Exacto)",
             data=csv_bytes,
-            file_name=f"reporte_semanal_{semana_data['fecha_inicio']}.csv",
+            file_name=f"reporte_semanal.csv",
             mime="text/csv"
         )
 
