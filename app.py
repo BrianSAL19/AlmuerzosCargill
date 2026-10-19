@@ -49,30 +49,45 @@ if not os.path.exists(ARCV_PEDIDOS):
 st.title("🍱 Registro de Pedidos de Almuerzo")
 
 # ====================================================================
-# 🎨 ESTILOS CSS CORREGIDOS PARA AGRANDAR PREGUNTAS Y OPCIONES
+# 🎨 ESTILOS CSS INTENSIVOS PARA MÓVILES (OPCIONES Y ENTRADAS)
 # ====================================================================
 st.markdown("""
     <style>
-    /* Preguntas y etiquetas principales (Tu nombre, ¿Completo o solo segundo?, etc.) */
-    div[data-testid="stWidgetLabel"] p {
+    /* Forzar tamaño gigante en radio buttons y sus opciones */
+    div[data-baseweb="radio"] label, 
+    div[data-testid="stRadio"] label,
+    div[data-testid="stRadio"] label p,
+    .stRadio label p {
+        font-size: 22px !important;
+        line-height: 1.4 !important;
+        font-weight: 500 !important;
+    }
+
+    /* Agrandar círculos de los radio buttons en táctil */
+    div[data-baseweb="radio"] div {
+        transform: scale(1.25);
+        margin-right: 8px !important;
+    }
+
+    /* Entradas de texto y cuadro de observaciones */
+    .stTextInput input, .stTextArea textarea {
         font-size: 20px !important;
+        padding: 12px !important;
+    }
+
+    /* Etiquetas/preguntas de los inputs */
+    div[data-testid="stWidgetLabel"] p, label p {
+        font-size: 22px !important;
         font-weight: bold !important;
         color: #0F172A !important;
     }
-    
-    /* Opciones dentro de los radio buttons */
-    .stRadio div[role="radiogroup"] label p {
-        font-size: 18px !important;
-    }
-    
-    /* Texto dentro de las cajas de entrada (inputs) y áreas de texto */
-    .stTextInput input, .stTextArea textarea {
-        font-size: 18px !important;
-    }
-    
+
     /* Botón Guardar Pedido */
+    .stButton button {
+        padding: 12px 24px !important;
+    }
     .stButton button p {
-        font-size: 18px !important;
+        font-size: 22px !important;
         font-weight: bold !important;
     }
     </style>
@@ -86,11 +101,20 @@ if "msg_admin" in st.session_state:
 # --- SECCIÓN 1: FORMULARIO DE REGISTRO ---
 st.header(TEXTO_CALDO)
 
-nombre = st.text_input("Tu nombre:")
-completo_segundo = st.radio("¿Completo o solo segundo?:", ["Completo", "Solo segundo"])
-seleccion_segundo = st.radio("Selecciona el segundo:", OPCIONES_SEGUNDO)
-tipo_arroz = st.radio("Selecciona el arroz:", ["Blanco", "Moro"])
-notas = st.text_area("Observaciones (opcional):", placeholder="Ej: MADURO EXTRA")
+st.markdown("#### **Tu nombre:**")
+nombre = st.text_input("Tu nombre:", label_visibility="collapsed")
+
+st.markdown("#### **¿Completo o solo segundo?:**")
+completo_segundo = st.radio("¿Completo o solo segundo?:", ["Completo", "Solo segundo"], label_visibility="collapsed")
+
+st.markdown("#### **Selecciona el segundo:**")
+seleccion_segundo = st.radio("Selecciona el segundo:", OPCIONES_SEGUNDO, label_visibility="collapsed")
+
+st.markdown("#### **Selecciona el arroz:**")
+tipo_arroz = st.radio("Selecciona el arroz:", ["Blanco", "Moro"], label_visibility="collapsed")
+
+st.markdown("#### **Observaciones (opcional):**")
+notas = st.text_area("Observaciones (opcional):", placeholder="Ej: MADURO EXTRA", label_visibility="collapsed")
 
 if st.button("Guardar Pedido"):
     if nombre.strip():
@@ -188,7 +212,7 @@ if os.path.exists(ARCV_PEDIDOS):
             
             plt.title(titulo_con_fecha, fontsize=26, fontweight='bold', pad=20, color='#0F172A')
             
-            col_widths = [0.05, 0.13, 0.11, 0.18, 0.09, 0.16]
+            col_widths = [0.05, 0.10, 0.11, 0.18, 0.09, 0.16]
 
             tabla = ax.table(
                 cellText=df_fmt.values,
