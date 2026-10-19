@@ -4,6 +4,7 @@ import os
 import json
 import matplotlib.pyplot as plt
 import textwrap
+from datetime import datetime
 from io import BytesIO
 
 # ====================================================================
@@ -46,6 +47,36 @@ if not os.path.exists(ARCV_PEDIDOS):
     df_inicial.to_csv(ARCV_PEDIDOS, index=False, sep=";")
 
 st.title("🍱 Registro de Pedidos de Almuerzo")
+
+# ====================================================================
+# 🎨 ESTILOS CSS CORREGIDOS PARA AGRANDAR PREGUNTAS Y OPCIONES
+# ====================================================================
+st.markdown("""
+    <style>
+    /* Preguntas y etiquetas principales (Tu nombre, ¿Completo o solo segundo?, etc.) */
+    div[data-testid="stWidgetLabel"] p {
+        font-size: 20px !important;
+        font-weight: bold !important;
+        color: #0F172A !important;
+    }
+    
+    /* Opciones dentro de los radio buttons */
+    .stRadio div[role="radiogroup"] label p {
+        font-size: 18px !important;
+    }
+    
+    /* Texto dentro de las cajas de entrada (inputs) y áreas de texto */
+    .stTextInput input, .stTextArea textarea {
+        font-size: 18px !important;
+    }
+    
+    /* Botón Guardar Pedido */
+    .stButton button p {
+        font-size: 18px !important;
+        font-weight: bold !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- MENSAJE DE ADMIN (APARECE ARRIBA DE TODO) ---
 if "msg_admin" in st.session_state:
@@ -130,7 +161,7 @@ if os.path.exists(ARCV_PEDIDOS):
 
         st.divider()
 
-        # --- GENERACIÓN DE IMAGEN CON LETRA GRANDE Y FORMATO MULTILÍNEA CORREGIDO ---
+        # --- GENERACIÓN DE IMAGEN CON FECHA AUTOMÁTICA Y FORMATO OPTIMIZADO ---
         st.subheader("🖼️ Generar imagen para compartir por WhatsApp")
 
         def generar_imagen_perfecta(df, completo, solo_seg):
@@ -139,7 +170,7 @@ if os.path.exists(ARCV_PEDIDOS):
             # Renombramos el encabezado para que salga en dos líneas
             df_fmt = df_fmt.rename(columns={"Tipo de Almuerzo": "Tipo de\nAlmuerzo"})
 
-            # Saltos de línea ajustados para no cortar palabras cortas como "Completo"
+            # Saltos de línea ajustados para no cortar palabras cortas
             df_fmt['Segundo'] = df_fmt['Segundo'].apply(lambda x: textwrap.fill(str(x), width=14))
             df_fmt['Observaciones'] = df_fmt['Observaciones'].apply(lambda x: textwrap.fill(str(x), width=10))
             df_fmt['Nombre'] = df_fmt['Nombre'].apply(lambda x: textwrap.fill(str(x), width=12))
@@ -151,7 +182,11 @@ if os.path.exists(ARCV_PEDIDOS):
             fig, ax = plt.subplots(figsize=(11, alto_figura), dpi=250)
             ax.axis('off')
             
-            plt.title("REPORTE DE PEDIDOS DE ALMUERZO", fontsize=30, fontweight='bold', pad=20, color='#0F172A')
+            # 📅 OBTENER Y FORMATO DE FECHA AUTOMÁTICA
+            fecha_hoy = datetime.now().strftime("%d/%m/%Y")
+            titulo_con_fecha = f"REPORTE DE PEDIDOS DE ALMUERZO ({fecha_hoy})"
+            
+            plt.title(titulo_con_fecha, fontsize=26, fontweight='bold', pad=20, color='#0F172A')
             
             col_widths = [0.05, 0.13, 0.11, 0.18, 0.09, 0.16]
 
@@ -206,7 +241,7 @@ if os.path.exists(ARCV_PEDIDOS):
         st.download_button(
             label="📲 Descargar Imagen JPG (Para WhatsApp)",
             data=buf_imagen,
-            file_name="pedidos_del_dia.jpg",
+            file_name=f"pedidos_{datetime.now().strftime('%Y_%m_%d')}.jpg",
             mime="image/jpeg",
         )
 
@@ -263,7 +298,7 @@ with st.sidebar:
                 
                 if st.button("Eliminar pedido seleccionado"):
                     idx_a_borrar = fila_a_borrar - 1
-                    df_pedidos_admin = df_pedidos_admin.drop(df_admin_show.index[idx_a_borrar])
+                    df_pedidos_admin = df_pedidos_admin.drop(df_pedidos_admin.index[idx_a_borrar])
                     df_pedidos_admin.to_csv(ARCV_PEDIDOS, index=False, sep=";")
                     st.session_state["msg_admin"] = f"¡Pedido #{fila_a_borrar} eliminado!"
                     st.rerun()
