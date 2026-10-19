@@ -53,12 +53,6 @@ st.title("🍱 Registro de Pedidos de Almuerzo")
 # ====================================================================
 st.markdown("""
     <style>
-    /* Ocultar insignia flotante "Created by" y elementos de Streamlit */
-    .viewerBadge_container__1QSob, footer, header, #MainMenu {
-        display: none !important;
-        visibility: hidden !important;
-    }
-    
     /* Forzar tamaño gigante en radio buttons y sus opciones */
     div[data-baseweb="radio"] label, 
     div[data-testid="stRadio"] label,
