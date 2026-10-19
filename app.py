@@ -253,7 +253,7 @@ if os.path.exists(ARCV_PEDIDOS):
         # --- GENERACIÓN DE TEXTO PARA WHATSAPP ---
         st.subheader("📲 Reporte para copiar y enviar por WhatsApp")
 
-        def generar_texto_whatsapp(df):
+        def generar_texto_whatsapp(df, completo_cnt, segundo_cnt):
             ahora = datetime.now(ZONA_ECUADOR)
             nombre_dia = DIAS_ESP[ahora.weekday()]
             nombre_mes = MESES_ESP[ahora.month]
@@ -262,7 +262,6 @@ if os.path.exists(ARCV_PEDIDOS):
             lineas = [encabezado_fecha, ""]
             contador = 1
             
-            # 1. Agrupar por Tipo de Almuerzo (Completo primero, luego Solo segundo)
             tipos_ordenados = ["Completo", "Solo segundo"]
             
             for tipo in tipos_ordenados:
@@ -270,7 +269,6 @@ if os.path.exists(ARCV_PEDIDOS):
                 if df_tipo.empty:
                     continue
                 
-                # Agrupar por cada opción de Segundo plato dentro del tipo
                 platos_unicos = df_tipo["Segundo"].unique()
                 for plato in platos_unicos:
                     df_plato = df_tipo[df_tipo["Segundo"] == plato]
@@ -291,12 +289,19 @@ if os.path.exists(ARCV_PEDIDOS):
                         contador += 1
                     
                     lineas.append("")
+
+            # RESUMEN FINAL AL PIE DEL TEXTO
+            lineas.append("-----------------------------")
+            lineas.append("TOTALES:")
+            lineas.append(f"• Completos: {completo_cnt}")
+            lineas.append(f"• Segundos: {segundo_cnt}")
+            lineas.append(f"• Total almuerzos: {len(df)}")
             
             return "\n".join(lineas).strip()
 
-        texto_wa = generar_texto_whatsapp(df_pedidos)
+        texto_wa = generar_texto_whatsapp(df_pedidos, cant_completo, cant_solo_segundo)
 
-        st.text_area("Copia el siguiente texto:", value=texto_wa, height=260)
+        st.text_area("Copia el siguiente texto:", value=texto_wa, height=320)
 
     else:
         st.info("Aún no hay pedidos registrados hoy.")
@@ -330,7 +335,6 @@ with st.sidebar:
         
         nombres_dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
         
-        # Inicializar índice en session_state si no existe
         if "dia_ficticio_prueba" not in st.session_state:
             st.session_state["dia_ficticio_prueba"] = semana_data.get("dia_ficticio_prueba", 0)
 
@@ -364,12 +368,10 @@ with st.sidebar:
                     completos_dia = int((df_pedidos_cierre["Tipo de Almuerzo"] == "Completo").sum())
                     segundos_dia = int((df_pedidos_cierre["Tipo de Almuerzo"] == "Solo segundo").sum())
 
-                    # Cargar última versión del archivo semanal
                     semana_data_fresca = cargar_datos_semana()
                     semana_data_fresca["dias"][dia_seleccionado_manual]["Completos"] = completos_dia
                     semana_data_fresca["dias"][dia_seleccionado_manual]["Segundos"] = segundos_dia
 
-                    # Calcular el siguiente día para avanzar el selector automáticamente
                     idx_actual = nombres_dias.index(dia_seleccionado_manual)
                     idx_siguiente = (idx_actual + 1) % 5
                     
@@ -378,7 +380,6 @@ with st.sidebar:
 
                     guardar_datos_semana(semana_data_fresca)
                     
-                    # Limpiar lista diaria
                     pd.DataFrame(columns=COLUMNAS).to_csv(ARCV_PEDIDOS, index=False, sep=";")
                     st.session_state["estado_manual_pedidos"] = None
                     
