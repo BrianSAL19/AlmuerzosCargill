@@ -4,7 +4,7 @@ import os
 import json
 import matplotlib.pyplot as plt
 import textwrap
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from io import BytesIO
 
 # ====================================================================
@@ -49,7 +49,7 @@ if not os.path.exists(ARCV_PEDIDOS):
 st.title("🍱 Registro de Pedidos de Almuerzo")
 
 # ====================================================================
-# 🎨 ESTILOS CSS INTENSIVOS PARA MÓVILES (OPCIONES Y ENTRADAS)
+# 🎨 ESTILOS CSS INTENSIVOS PARA MÓVILES (OPCIONES Y ENTRADAS GRANDES)
 # ====================================================================
 st.markdown("""
     <style>
@@ -185,16 +185,14 @@ if os.path.exists(ARCV_PEDIDOS):
 
         st.divider()
 
-        # --- GENERACIÓN DE IMAGEN CON FECHA AUTOMÁTICA Y FORMATO OPTIMIZADO ---
+        # --- GENERACIÓN DE IMAGEN CON ZONA HORARIA ECUADOR (UTC-5) ---
         st.subheader("🖼️ Generar imagen para compartir por WhatsApp")
 
         def generar_imagen_perfecta(df, completo, solo_seg):
             df_fmt = df.copy()
             
-            # Renombramos el encabezado para que salga en dos líneas
             df_fmt = df_fmt.rename(columns={"Tipo de Almuerzo": "Tipo de\nAlmuerzo"})
 
-            # Saltos de línea ajustados para no cortar palabras cortas
             df_fmt['Segundo'] = df_fmt['Segundo'].apply(lambda x: textwrap.fill(str(x), width=14))
             df_fmt['Observaciones'] = df_fmt['Observaciones'].apply(lambda x: textwrap.fill(str(x), width=10))
             df_fmt['Nombre'] = df_fmt['Nombre'].apply(lambda x: textwrap.fill(str(x), width=12))
@@ -206,13 +204,14 @@ if os.path.exists(ARCV_PEDIDOS):
             fig, ax = plt.subplots(figsize=(11, alto_figura), dpi=250)
             ax.axis('off')
             
-            # 📅 OBTENER Y FORMATO DE FECHA AUTOMÁTICA
-            fecha_hoy = datetime.now().strftime("%d/%m/%Y")
+            # 📅 FECHA EXACTA DE ECUADOR (UTC-5)
+            zona_ecuador = timezone(timedelta(hours=-5))
+            fecha_hoy = datetime.now(zona_ecuador).strftime("%d/%m/%Y")
             titulo_con_fecha = f"REPORTE DE PEDIDOS DE ALMUERZO ({fecha_hoy})"
             
             plt.title(titulo_con_fecha, fontsize=26, fontweight='bold', pad=20, color='#0F172A')
             
-            col_widths = [0.05, 0.10, 0.11, 0.18, 0.09, 0.16]
+            col_widths = [0.05, 0.13, 0.11, 0.18, 0.09, 0.16]
 
             tabla = ax.table(
                 cellText=df_fmt.values,
@@ -262,10 +261,13 @@ if os.path.exists(ARCV_PEDIDOS):
 
         st.image(buf_imagen, caption="Vista previa de la imagen a enviar", use_container_width=True)
 
+        zona_ecuador = timezone(timedelta(hours=-5))
+        fecha_archivo = datetime.now(zona_ecuador).strftime('%Y_%m_%d')
+
         st.download_button(
             label="📲 Descargar Imagen JPG (Para WhatsApp)",
             data=buf_imagen,
-            file_name=f"pedidos_{datetime.now().strftime('%Y_%m_%d')}.jpg",
+            file_name=f"pedidos_{fecha_archivo}.jpg",
             mime="image/jpeg",
         )
 
