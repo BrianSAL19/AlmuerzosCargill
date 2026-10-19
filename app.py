@@ -258,7 +258,7 @@ if os.path.exists(ARCV_PEDIDOS):
             num_filas = len(df_fmt)
             
             # Ajuste perfecto del alto total del lienzo para recortar espacios muertos
-            alto_figura = max(5.5, num_filas * 0.95 + 3)
+            alto_figura = max(5.5, num_filas * 0.95 + 4)
             
             fig, ax = plt.subplots(figsize=(11, alto_figura), dpi=250)
             ax.axis('off')
