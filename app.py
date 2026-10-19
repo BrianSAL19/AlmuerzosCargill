@@ -316,7 +316,7 @@ if os.path.exists(ARCV_PEDIDOS):
             # Cuadro de resumen pegado pegadito debajo de la tabla
             plt.text(
                 0.5, 0.08, texto_resumen, 
-                ha='center', va='top', fontsize=14, fontweight='bold',
+                ha='center', va='top', fontsize=16.5, fontweight='bold',
                 color='#0F172A',
                 bbox=dict(boxstyle='round,pad=0.7', facecolor='#E2E8F0', edgecolor='#94A3B8', linewidth=1.2)
             )
