@@ -96,7 +96,8 @@ if os.path.exists(ARCV_PEDIDOS):
         if "Observaciones" in df_pedidos.columns:
             df_pedidos["Observaciones"] = df_pedidos["Observaciones"].fillna("----").replace("", "----")
 
-        df_mostrar = df_pedidos.copy()
+        # 🔄 ORDENAR: Primero "Completo" y después "Solo segundo"
+        df_mostrar = df_pedidos.sort_values(by="Tipo de Almuerzo", ascending=True).reset_index(drop=True)
         df_mostrar.insert(0, "#", range(1, len(df_mostrar) + 1))
         
         st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
@@ -135,8 +136,10 @@ if os.path.exists(ARCV_PEDIDOS):
         def generar_imagen_perfecta(df, completo, solo_seg):
             df_fmt = df.copy()
             
+            # Renombramos el encabezado para que salga en dos líneas
             df_fmt = df_fmt.rename(columns={"Tipo de Almuerzo": "Tipo de\nAlmuerzo"})
 
+            # Saltos de línea ajustados para no cortar palabras cortas como "Completo"
             df_fmt['Segundo'] = df_fmt['Segundo'].apply(lambda x: textwrap.fill(str(x), width=14))
             df_fmt['Observaciones'] = df_fmt['Observaciones'].apply(lambda x: textwrap.fill(str(x), width=10))
             df_fmt['Nombre'] = df_fmt['Nombre'].apply(lambda x: textwrap.fill(str(x), width=12))
@@ -150,7 +153,7 @@ if os.path.exists(ARCV_PEDIDOS):
             
             plt.title("REPORTE DE PEDIDOS DE ALMUERZO", fontsize=30, fontweight='bold', pad=20, color='#0F172A')
             
-            col_widths = [0.05, 0.10, 0.11, 0.18, 0.09, 0.16]
+            col_widths = [0.05, 0.13, 0.11, 0.18, 0.09, 0.16]
 
             tabla = ax.table(
                 cellText=df_fmt.values,
@@ -250,7 +253,7 @@ with st.sidebar:
             df_pedidos_admin = pd.read_csv(ARCV_PEDIDOS, sep=";")
             
             if not df_pedidos_admin.empty:
-                df_admin_show = df_pedidos_admin.copy()
+                df_admin_show = df_pedidos_admin.sort_values(by="Tipo de Almuerzo", ascending=True).reset_index(drop=True)
                 df_admin_show.insert(0, "#", range(1, len(df_admin_show) + 1))
                 
                 # --- ELIMINAR PEDIDO INDIVIDUAL ---
@@ -260,7 +263,7 @@ with st.sidebar:
                 
                 if st.button("Eliminar pedido seleccionado"):
                     idx_a_borrar = fila_a_borrar - 1
-                    df_pedidos_admin = df_pedidos_admin.drop(df_pedidos_admin.index[idx_a_borrar])
+                    df_pedidos_admin = df_pedidos_admin.drop(df_admin_show.index[idx_a_borrar])
                     df_pedidos_admin.to_csv(ARCV_PEDIDOS, index=False, sep=";")
                     st.session_state["msg_admin"] = f"¡Pedido #{fila_a_borrar} eliminado!"
                     st.rerun()
