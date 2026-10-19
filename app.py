@@ -297,7 +297,7 @@ with st.sidebar:
             height=120
         )
 
-        if st.button("💾 Guardar Menú del Día"):
+        if st.button("💾 Guardar\nMenú del Día"):
             lista_segundos = [s.strip() for s in nuevos_segundos_input.split("\n") if s.strip()]
             if lista_segundos and nuevo_caldo_input.strip():
                 nuevo_menu = {
