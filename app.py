@@ -2,10 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 import json
-import matplotlib.pyplot as plt
-import textwrap
 from datetime import datetime, timezone, timedelta
-from io import BytesIO
 
 # ====================================================================
 # 🔑 CONFIGURACIÓN, COSTOS Y ARCHIVOS DE DATOS
@@ -22,6 +19,16 @@ PRECIO_SEGUNDO = 2.25
 
 # Zona Horaria Guayaquil / Ecuador (UTC-5)
 ZONA_ECUADOR = timezone(timedelta(hours=-5))
+
+DIAS_ESP = {
+    0: "Lunes", 1: "Martes", 2: "Miércoles", 3: "Jueves",
+    4: "Viernes", 5: "Sábado", 6: "Domingo"
+}
+
+MESES_ESP = {
+    1: "enero", 2: "febrero", 3: "marzo", 4: "abril", 5: "mayo", 6: "junio",
+    7: "julio", 8: "agosto", 9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre"
+}
 
 # Cargar o inicializar el menú del día
 MENU_DEFAULT = {
@@ -243,104 +250,53 @@ if os.path.exists(ARCV_PEDIDOS):
 
         st.divider()
 
-        # --- GENERACIÓN DE IMAGEN CON ZONA HORARIA ECUADOR (UTC-5) ---
-        st.subheader("🖼️ Generar imagen para compartir por WhatsApp")
+        # --- GENERACIÓN DE TEXTO PARA WHATSAPP ---
+        st.subheader("📲 Reporte para copiar y enviar por WhatsApp")
 
-        def generar_imagen_perfecta(df, completo, solo_seg):
-            df_fmt = df.copy()
-            df_fmt = df_fmt.rename(columns={"Tipo de Almuerzo": "Tipo de\nAlmuerzo"})
-
-            df_fmt['Segundo'] = df_fmt['Segundo'].apply(lambda x: textwrap.fill(str(x), width=14))
-            df_fmt['Observaciones'] = df_fmt['Observaciones'].apply(lambda x: textwrap.fill(str(x), width=10))
-            df_fmt['Nombre'] = df_fmt['Nombre'].apply(lambda x: textwrap.fill(str(x), width=12))
-            df_fmt['Tipo de\nAlmuerzo'] = df_fmt['Tipo de\nAlmuerzo'].apply(lambda x: textwrap.fill(str(x), width=10))
-
-            num_filas = len(df_fmt)
+        def generar_texto_whatsapp(df):
+            ahora = datetime.now(ZONA_ECUADOR)
+            nombre_dia = DIAS_ESP[ahora.weekday()]
+            nombre_mes = MESES_ESP[ahora.month]
+            encabezado_fecha = f"{nombre_dia}, {ahora.day} de {nombre_mes}"
             
-            # Ajuste perfecto del alto total del lienzo para recortar espacios muertos
-            alto_figura = max(5.5, num_filas * 0.95 + 4)
+            lineas = [encabezado_fecha, ""]
+            contador = 1
             
-            fig, ax = plt.subplots(figsize=(11, alto_figura), dpi=250)
-            ax.axis('off')
+            # 1. Agrupar por Tipo de Almuerzo (Completo primero, luego Solo segundo)
+            tipos_ordenados = ["Completo", "Solo segundo"]
             
-            fecha_hoy = datetime.now(ZONA_ECUADOR).strftime("%d/%m/%Y")
-            titulo_con_fecha = f"REPORTE DE PEDIDOS DE ALMUERZO ({fecha_hoy})"
-            
-            # Título exactamente arriba de la tabla
-            plt.title(titulo_con_fecha, fontsize=26, fontweight='bold', pad=18, color='#0F172A')
-            
-            col_widths = [0.05, 0.13, 0.11, 0.18, 0.09, 0.16]
-
-            # TABLA EN SU TAMAÑO ORIGINAL INTACTO
-            # La tabla se posiciona desde la parte superior
-            pos_y_inferior_tabla = 0.15
-            tabla = ax.table(
-                cellText=df_fmt.values,
-                colLabels=df_fmt.columns,
-                colWidths=col_widths,
-                cellLoc='center',
-                loc='top',
-                bbox=[0, pos_y_inferior_tabla, 1, 0.78]
-            )
-            
-            tabla.auto_set_font_size(False)
-            tabla.set_fontsize(17)
-            
-            for (r, c), cell in tabla.get_celld().items():
-                if r == 0:
-                    cell.set_facecolor('#1D4ED8')
-                    cell.set_text_props(color='white', weight='bold', fontsize=18)
-                else:
-                    color_fondo = '#F8FAFC' if r % 2 == 0 else '#FFFFFF'
-                    cell.set_facecolor(color_fondo)
-                    cell.set_text_props(color='#1E293B', weight='bold')
+            for tipo in tipos_ordenados:
+                df_tipo = df[df["Tipo de Almuerzo"] == tipo]
+                if df_tipo.empty:
+                    continue
                 
-                cell.set_edgecolor('#CBD5E1')
-                cell.set_linewidth(1.0)
-
-            # CONSTRUCCIÓN DINÁMICA DEL RESUMEN DE SEGUNDOS
-            resumen_segundos_lista = []
-            if "Segundo" in df.columns:
-                for plato, cantidad in df["Segundo"].value_counts().items():
-                    resumen_segundos_lista.append(f"• {plato}: {cantidad}")
+                # Agrupar por cada opción de Segundo plato dentro del tipo
+                platos_unicos = df_tipo["Segundo"].unique()
+                for plato in platos_unicos:
+                    df_plato = df_tipo[df_tipo["Segundo"] == plato]
+                    
+                    titulo_categoria = f"{'Completos' if tipo == 'Completo' else 'Segundo'} de {plato.lower()}"
+                    lineas.append(titulo_categoria)
+                    lineas.append("")
+                    
+                    for _, fila in df_plato.iterrows():
+                        arroz_str = str(fila["Arroz"]).lower()
+                        obs = str(fila["Observaciones"]).strip()
+                        
+                        linea_persona = f"{contador}. {fila['Nombre']} ({arroz_str})"
+                        if obs and obs != "----":
+                            linea_persona += f" ({obs.lower()})"
+                            
+                        lineas.append(linea_persona)
+                        contador += 1
+                    
+                    lineas.append("")
             
-            texto_segundos_str = "   |   ".join(resumen_segundos_lista)
+            return "\n".join(lineas).strip()
 
-            texto_resumen = (
-                f"RESUMEN DE TOTALES:\n"
-                f"• Almuerzos Completos: {completo}   |   • Solo Segundo: {solo_seg}   |   • Total Pedidos: {len(df_fmt)}"
-            )
-            if texto_segundos_str:
-                texto_resumen += f"\nOPCIONES DE SEGUNDO:\n{texto_segundos_str}"
-            
-            # Cuadro de resumen pegado pegadito debajo de la tabla
-            plt.text(
-                0.5, 0.08, texto_resumen, 
-                ha='center', va='top', fontsize=16.5, fontweight='bold',
-                color='#0F172A',
-                bbox=dict(boxstyle='round,pad=0.7', facecolor='#E2E8F0', edgecolor='#94A3B8', linewidth=1.2)
-            )
-            
-            plt.tight_layout()
-            
-            buffer = BytesIO()
-            plt.savefig(buffer, format='jpeg', bbox_inches='tight', facecolor='white')
-            buffer.seek(0)
-            plt.close(fig)
-            return buffer
+        texto_wa = generar_texto_whatsapp(df_pedidos)
 
-        buf_imagen = generar_imagen_perfecta(df_mostrar, cant_completo, cant_solo_segundo)
-
-        st.image(buf_imagen, caption="Vista previa de la imagen a enviar", use_container_width=True)
-
-        fecha_archivo = datetime.now(ZONA_ECUADOR).strftime('%Y_%m_%d')
-
-        st.download_button(
-            label="📲 Descargar Imagen JPG (Para WhatsApp)",
-            data=buf_imagen,
-            file_name=f"pedidos_{fecha_archivo}.jpg",
-            mime="image/jpeg",
-        )
+        st.text_area("Copia el siguiente texto:", value=texto_wa, height=260)
 
     else:
         st.info("Aún no hay pedidos registrados hoy.")
