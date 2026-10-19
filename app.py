@@ -53,6 +53,17 @@ st.title("🍱 Registro de Pedidos de Almuerzo")
 # ====================================================================
 st.markdown("""
     <style>
+    /* Ocultar insignia flotante y elementos de Streamlit de forma definitiva */
+    footer, header, #MainMenu {visibility: hidden !important; display: none !important;}
+    
+    /* Ocultar cualquier elemento flotante en la esquina inferior derecha (badge de Streamlit) */
+    div[class*="viewerBadge"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    
     /* Forzar tamaño gigante en radio buttons y sus opciones */
     div[data-baseweb="radio"] label, 
     div[data-testid="stRadio"] label,
