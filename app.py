@@ -300,7 +300,7 @@ with st.sidebar:
         
         # --- SELECTOR DE SEDE / EMPRESA DENTRO DEL MODO ADMIN ---
         st.markdown("---")
-        st.subheader("🏢 Seleccionar Sede / Empresa")
+        st.subheader("🏢 Seleccionar Sede/Lugar")
         
         idx_actual = SEDES_DISPONIBLES.index(sede_seleccionada) if sede_seleccionada in SEDES_DISPONIBLES else 0
         nueva_sede = st.selectbox(
